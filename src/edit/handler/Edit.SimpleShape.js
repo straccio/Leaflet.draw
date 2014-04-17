@@ -20,17 +20,17 @@ L.Edit.SimpleShape = L.Handler.extend({
         }),
 	},
 
-	initialize: function (shape, options) {
-        // if touch, switch to touch icon
-        if (L.Browser.touch){ 
-            this.options.moveIcon = this.options.touchMoveIcon;
-            this.options.resizeIcon = this.options.touchResizeIcon;
-        }
-
-        this._map = map;
-		this._shape = shape;
-		L.Util.setOptions(this, options);
-	},
+//	initialize: function (shape, options) {
+//        // if touch, switch to touch icon
+//        if (L.Browser.touch){
+//            this.options.moveIcon = this.options.touchMoveIcon;
+//            this.options.resizeIcon = this.options.touchResizeIcon;
+//        }
+//
+//        this._map = map;
+//		this._shape = shape;
+//		L.Util.setOptions(this, options);
+//	},
 
 	addHooks: function () {
 		if (this._shape._map) {

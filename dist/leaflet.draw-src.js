@@ -157,7 +157,7 @@ L.Draw.Feature = L.Handler.extend({
 
 			map.getContainer().focus();
 
-			this._tooltip = new L.Tooltip(this._map);
+			this._tooltip = new L.Tooltip(this._map);//,{zIndexOffset:6000});
 
 			L.DomEvent.on(this._container, 'keyup', this._cancelDrawing, this);
 		}
@@ -190,470 +190,556 @@ L.Draw.Feature = L.Handler.extend({
 	}
 });
 
-L.Draw.Polyline = L.Draw.Feature.extend({
-	statics: {
-		TYPE: 'polyline'
-	},
-
-	Poly: L.Polyline,
-
-	options: {
-		allowIntersection: true,
-		repeatMode: false,
-		drawError: {
-			color: '#b00b00',
-			timeout: 2500
+L.Draw.Polyline = L.Draw.Feature.extend(
+	{
+		statics: {
+			TYPE: 'polyline'
 		},
-		icon: new L.DivIcon({
-			iconSize: new L.Point(8, 8),
-			className: 'leaflet-div-icon leaflet-editing-icon'
-		}),
-        touchIcon: new L.DivIcon({
-            iconSize: new L.Point(20, 20),
-            className: 'leaflet-div-icon leaflet-editing-icon leaflet-touch-icon'
-        }),
-		guidelineDistance: 20,
-		maxGuideLineLength: 4000,
-		shapeOptions: {
-			stroke: true,
-			color: '#f06eaa',
-			weight: 4,
-			opacity: 0.5,
-			fill: false,
-			clickable: true
+
+		Poly: L.Polyline,
+
+		options: {
+			allowIntersection: true,
+			repeatMode: false,
+			drawError: {
+				color: '#b00b00',
+				timeout: 2500
+			},
+			icon: new L.DivIcon( {
+														 iconSize: new L.Point( 8, 8 ),
+														 className: 'leaflet-div-icon leaflet-editing-icon'
+													 } ),
+			touchIcon: new L.DivIcon( {
+																	iconSize: new L.Point( 20, 20 ),
+																	className: 'leaflet-div-icon leaflet-editing-icon leaflet-touch-icon'
+																} ),
+			guidelineDistance: 20,
+			maxGuideLineLength: 4000,
+			shapeOptions: {
+				stroke: true,
+				color: '#f06eaa',
+				weight: 4,
+				opacity: 0.5,
+				fill: false,
+				clickable: true
+			},
+			metric: true, // Whether to use the metric meaurement system or imperial
+			showLength: true, // Whether to display distance in the tooltip
+			zIndexOffset: 2000 // This should be > than the highest z-index any map layers
 		},
-		metric: true, // Whether to use the metric meaurement system or imperial
-		showLength: true, // Whether to display distance in the tooltip
-		zIndexOffset: 2000 // This should be > than the highest z-index any map layers
-	},
 
-	initialize: function (map, options) {
-        // if touch, switch to touch icon
-        if (L.Browser.touch){ 
-            this.options.icon = this.options.touchIcon;
-        }
-
-		// Need to set this here to ensure the correct message is used.
-		this.options.drawError.message = L.drawLocal.draw.handlers.polyline.error;
-
-		// Merge default drawError options with custom options
-		if (options && options.drawError) {
-			options.drawError = L.Util.extend({}, this.options.drawError, options.drawError);
-		}
-
-		// Save the type so super can fire, need to do this as cannot do this.TYPE :(
-		this.type = L.Draw.Polyline.TYPE;
-
-		L.Draw.Feature.prototype.initialize.call(this, map, options);
-	},
-
-	addHooks: function () {
-		L.Draw.Feature.prototype.addHooks.call(this);
-		if (this._map) {
-			this._markers = [];
-
-			this._markerGroup = new L.LayerGroup();
-			this._map.addLayer(this._markerGroup);
-
-			this._poly = new L.Polyline([], this.options.shapeOptions);
-            
-            this._tooltip.updateContent(this._getTooltipText());
-
-			// Make a transparent marker that will used to catch click events. These click
-			// events will create the vertices. We need to do this so we can ensure that
-			// we can create vertices over other map layers (markers, vector layers). We
-			// also do not want to trigger any click handlers of objects we are clicking on
-			// while drawing.
-			if (!this._mouseMarker) {
-				this._mouseMarker = L.marker(this._map.getCenter(), {
-					icon: L.divIcon({
-						className: 'leaflet-mouse-marker',
-						iconAnchor: [20, 20],
-						iconSize: [40, 40]
-					}),
-					opacity: 0,
-					zIndexOffset: this.options.zIndexOffset
-				});
+		initialize: function ( map,
+													 options
+			) {
+			// if touch, switch to touch icon
+			if ( L.Browser.touch ) {
+				this.options.icon = this.options.touchIcon;
 			}
+
+			// Need to set this here to ensure the correct message is used.
+			this.options.drawError.message = L.drawLocal.draw.handlers.polyline.error;
+
+			// Merge default drawError options with custom options
+			if ( options && options.drawError ) {
+				options.drawError = L.Util.extend( {}, this.options.drawError, options.drawError );
+			}
+
+			// Save the type so super can fire, need to do this as cannot do this.TYPE :(
+			this.type = L.Draw.Polyline.TYPE;
+
+			L.Draw.Feature.prototype.initialize.call( this, map, options );
+		},
+
+		addHooks: function () {
+			L.Draw.Feature.prototype.addHooks.call( this );
+			if ( this._map ) {
+				this._markers = [];
+
+				this._markerGroup = new L.LayerGroup();
+				this._map.addLayer( this._markerGroup );
+
+				this._poly = new L.Polyline( [], this.options.shapeOptions );
+
+				this._tooltip.updateContent( this._getTooltipText() );
+
+				// Make a transparent marker that will used to catch click events. These click
+				// events will create the vertices. We need to do this so we can ensure that
+				// we can create vertices over other map layers (markers, vector layers). We
+				// also do not want to trigger any click handlers of objects we are clicking on
+				// while drawing.
+				if ( !this._mouseMarker ) {
+					this._mouseMarker = L.marker( this._map.getCenter(), {
+						icon: L.divIcon( {
+															 className: 'leaflet-mouse-marker',
+															 iconAnchor: [20, 20],
+															 iconSize: [40, 40]
+														 } ),
+						opacity: 0,
+						zIndexOffset: this.options.zIndexOffset
+					} );
+				}
+
+				if ( L.Browser.touch ) {
+					this._mouseMarker
+						.on( 'touchstart', this._onMouseDown, this )
+						.addTo( this._map );
+
+					this._map
+//					.on('mousemove', this._onMouseMove, this)
+//					.on('mouseup', this._onMouseUp, this)
+						.on( 'zoomend', this._onZoomEnd, this )
+						.on( 'touchstart', this._onTouchStart, this )
+						.on( 'touchend', this._onTouchEnd, this );
+				} else {
+					this._mouseMarker
+						.on( 'mousedown', this._onMouseDown, this )
+						.addTo( this._map );
+
+					this._map
+						.on( 'mousemove', this._onMouseMove, this )
+						.on( 'mouseup', this._onMouseUp, this )
+						.on( 'zoomend', this._onZoomEnd, this )
+						.on( 'click', this._onTouch, this );
+				}
+			}
+		},
+
+		removeHooks: function () {
+			L.Draw.Feature.prototype.removeHooks.call( this );
+
+			this._clearHideErrorTimeout();
+
+			this._cleanUpShape();
+
+			// remove markers from map
+			this._map.removeLayer( this._markerGroup );
+			delete this._markerGroup;
+			delete this._markers;
+
+			this._map.removeLayer( this._poly );
+			delete this._poly;
 
 			this._mouseMarker
-				.on('mousedown', this._onMouseDown, this)
-				.addTo(this._map);
+				.off( 'mousedown', this._onMouseDown, this )
+				.off( 'mouseup', this._onMouseUp, this );
+			this._map.removeLayer( this._mouseMarker );
+			delete this._mouseMarker;
 
-			this._map
-				.on('mousemove', this._onMouseMove, this)
-				.on('mouseup', this._onMouseUp, this)
-				.on('zoomend', this._onZoomEnd, this)
-                .on('click', this._onTouch, this);
-		}
-	},
-
-	removeHooks: function () {
-		L.Draw.Feature.prototype.removeHooks.call(this);
-
-		this._clearHideErrorTimeout();
-
-		this._cleanUpShape();
-
-		// remove markers from map
-		this._map.removeLayer(this._markerGroup);
-		delete this._markerGroup;
-		delete this._markers;
-
-		this._map.removeLayer(this._poly);
-		delete this._poly;
-
-		this._mouseMarker
-			.off('mousedown', this._onMouseDown, this)
-			.off('mouseup', this._onMouseUp, this);
-		this._map.removeLayer(this._mouseMarker);
-		delete this._mouseMarker;
-
-		// clean up DOM
-		this._clearGuides();
-
-		this._map
-			.off('mousemove', this._onMouseMove, this)
-			.off('zoomend', this._onZoomEnd, this)
-            .off('click', this._onTouch, this);
-	},
-
-	deleteLastVertex: function () {
-		if (this._markers.length <= 1) {
-			return;
-		}
-
-		var lastMarker = this._markers.pop(),
-			poly = this._poly,
-			latlng = this._poly.spliceLatLngs(poly.getLatLngs().length - 1, 1)[0];
-
-		this._markerGroup.removeLayer(lastMarker);
-
-		if (poly.getLatLngs().length < 2) {
-			this._map.removeLayer(poly);
-		}
-
-		this._vertexChanged(latlng, false);
-	},
-
-	addVertex: function (latlng) {
-		var markersLength = this._markers.length;
-
-		if (markersLength > 0 && !this.options.allowIntersection && this._poly.newLatLngIntersects(latlng)) {
-			this._showErrorTooltip();
-			return;
-		}
-		else if (this._errorShown) {
-			this._hideErrorTooltip();
-		}
-
-		this._markers.push(this._createMarker(latlng));
-
-		this._poly.addLatLng(latlng);
-
-		if (this._poly.getLatLngs().length === 2) {
-			this._map.addLayer(this._poly);
-		}
-
-		this._vertexChanged(latlng, true);
-	},
-
-    completeShape: function(){
-        if (this._markers.length <= 1) {
-            return;
-        }
-
-        this._fireCreatedEvent();
-        this.disable();
-
-        if (this.options.repeatMode) {
-            this.enable();
-        }
-    },
-
-	_finishShape: function () {
-		var intersects = this._poly.newLatLngIntersects(this._poly.getLatLngs()[0], true);
-
-		if ((!this.options.allowIntersection && intersects) || !this._shapeIsValid()) {
-			this._showErrorTooltip();
-			return;
-		}
-
-		this._fireCreatedEvent();
-		this.disable();
-		if (this.options.repeatMode) {
-			this.enable();
-		}
-	},
-
-	//Called to verify the shape is valid when the user tries to finish it
-	//Return false if the shape is not valid
-	_shapeIsValid: function () {
-		return true;
-	},
-
-	_onZoomEnd: function () {
-		this._updateGuide();
-	},
-
-	_onMouseMove: function (e) {
-		var newPos = e.layerPoint,
-			latlng = e.latlng;
-
-		// Save latlng
-		// should this be moved to _updateGuide() ?
-		this._currentLatLng = latlng;
-
-		this._updateTooltip(latlng);
-
-		// Update the guide line
-		this._updateGuide(newPos);
-
-		// Update the mouse marker position
-		this._mouseMarker.setLatLng(latlng);
-
-		L.DomEvent.preventDefault(e.originalEvent);
-	},
-
-	_onMouseDown: function (e) {
-		var originalEvent = e.originalEvent;
-		this._mouseDownOrigin = L.point(originalEvent.clientX, originalEvent.clientY);
-	},
-
-	_onMouseUp: function (e) {
-		if (this._mouseDownOrigin) {
-			// We detect clicks within a certain tolerance, otherwise let it
-			// be interpreted as a drag by the map
-			var distance = L.point(e.originalEvent.clientX, e.originalEvent.clientY)
-				.distanceTo(this._mouseDownOrigin);
-			if (Math.abs(distance) < 9 * (window.devicePixelRatio || 1)) {
-				this.addVertex(e.latlng);
-			}
-		}
-		this._mouseDownOrigin = null;
-	},
-
-    _onTouch: function (e) {
-        // #TODO: fix the glitchyness of not closing the polyline
-        // #TODO: use touchstart and touchend vs using click(touch start & end).
-        this._onMouseDown(e);
-        this._onMouseUp(e);
-    },
-    
-    _vertexChanged: function (latlng, added) {
-        this._updateFinishHandler();
-
-        this._updateRunningMeasure(latlng, added);
-
-        this._clearGuides();
-
-        this._updateTooltip();
-    },
-
-	_updateFinishHandler: function () {
-		var markerCount = this._markers.length;
-		// The last marker should have a click handler to close the polyline
-		if (markerCount > 1) {
-			this._markers[markerCount - 1].on('click', this._finishShape, this);
-		}
-
-		// Remove the old marker click handler (as only the last point should close the polyline)
-		if (markerCount > 2) {
-			this._markers[markerCount - 2].off('click', this._finishShape, this);
-		}
-	},
-
-	_createMarker: function (latlng) {
-		var marker = new L.Marker(latlng, {
-			icon: this.options.icon,
-			zIndexOffset: this.options.zIndexOffset * 2
-		});
-
-		this._markerGroup.addLayer(marker);
-
-		return marker;
-	},
-
-	_updateGuide: function (newPos) {
-		var markerCount = this._markers.length;
-
-		if (markerCount > 0) {
-			newPos = newPos || this._map.latLngToLayerPoint(this._currentLatLng);
-
-			// draw the guide line
+			// clean up DOM
 			this._clearGuides();
-			this._drawGuide(
-				this._map.latLngToLayerPoint(this._markers[markerCount - 1].getLatLng()),
-				newPos
-			);
-		}
-	},
+			if ( L.Browser.touch ) {
+				this._map
+//					.off( 'mousemove', this._onMouseMove, this )
+					.off( 'zoomend', this._onZoomEnd, this )
+					.off( 'touchstart', this._onTouchStart, this )
+					.off( 'touchend', this._onTouchEnd, this );
+			} else {
+				this._map
+					.off( 'mousemove', this._onMouseMove, this )
+					.off( 'zoomend', this._onZoomEnd, this )
+					.off( 'click', this._onTouch, this );
+			}
 
-	_updateTooltip: function (latLng) {
-		var text = this._getTooltipText();
+		},
 
-		if (latLng) {
-			this._tooltip.updatePosition(latLng);
-		}
+		deleteLastVertex: function () {
+			if ( this._markers.length <= 1 ) {
+				return;
+			}
 
-		if (!this._errorShown) {
-			this._tooltip.updateContent(text);
-		}
-	},
+			var lastMarker = this._markers.pop(),
+				poly = this._poly,
+				latlng = this._poly.spliceLatLngs( poly.getLatLngs().length - 1, 1 )[0];
 
-	_drawGuide: function (pointA, pointB) {
-		var length = Math.floor(Math.sqrt(Math.pow((pointB.x - pointA.x), 2) + Math.pow((pointB.y - pointA.y), 2))),
-			guidelineDistance = this.options.guidelineDistance,
-			maxGuideLineLength = this.options.maxGuideLineLength,
+			this._markerGroup.removeLayer( lastMarker );
+
+			if ( poly.getLatLngs().length < 2 ) {
+				this._map.removeLayer( poly );
+			}
+
+			this._vertexChanged( latlng, false );
+		},
+
+		addVertex: function ( latlng ) {
+			var markersLength = this._markers.length;
+
+			if ( markersLength > 0 && !this.options.allowIntersection && this._poly.newLatLngIntersects( latlng ) ) {
+				this._showErrorTooltip();
+				return;
+			}
+			else {
+				if ( this._errorShown ) {
+					this._hideErrorTooltip();
+				}
+			}
+
+			this._markers.push( this._createMarker( latlng ) );
+
+			this._poly.addLatLng( latlng );
+
+			if ( this._poly.getLatLngs().length === 2 ) {
+				this._map.addLayer( this._poly );
+			}
+
+			this._vertexChanged( latlng, true );
+		},
+
+		completeShape: function () {
+			if ( this._markers.length <= 1 ) {
+				return;
+			}
+
+			this._fireCreatedEvent();
+			this.disable();
+
+			if ( this.options.repeatMode ) {
+				this.enable();
+			}
+		},
+
+		_finishShape: function () {
+			var intersects = this._poly.newLatLngIntersects( this._poly.getLatLngs()[0], true );
+
+			if ( (!this.options.allowIntersection && intersects) || !this._shapeIsValid() ) {
+				this._showErrorTooltip();
+				return;
+			}
+
+			this._fireCreatedEvent();
+			this.disable();
+			if ( this.options.repeatMode ) {
+				this.enable();
+			}
+		},
+
+		//Called to verify the shape is valid when the user tries to finish it
+		//Return false if the shape is not valid
+		_shapeIsValid: function () {
+			return true;
+		},
+
+		_onZoomEnd: function () {
+			this._updateGuide();
+		},
+
+		_onMouseMove: function ( e ) {
+			var newPos = e.layerPoint,
+				latlng = e.latlng;
+
+			// Save latlng
+			// should this be moved to _updateGuide() ?
+			this._currentLatLng = latlng;
+
+			this._updateTooltip( latlng );
+
+			// Update the guide line
+			this._updateGuide( newPos );
+
+			// Update the mouse marker position
+			this._mouseMarker.setLatLng( latlng );
+
+			L.DomEvent.preventDefault( e.originalEvent );
+		},
+
+		_finishShapeTouchStart: function ( e ) {
+			var originalEvent = e;//.originalEvent;
+			if ( originalEvent.touches.length === 1 ) {
+				this._finishShapeOrigin = L.point( originalEvent.touches[0].clientX, originalEvent.touches[0].clientY );
+			}
+		},
+		_finishShapeTouchEnd: function ( e ) {
+			if ( this._finishShapeOrigin ) {
+				// We detect clicks within a certain tolerance, otherwise let it
+				// be interpreted as a drag by the map
+				var distance = null;
+				var mouseEvent = e.type === 'touchend' ? e.changedTouches[0] : e.touches[0];
+
+				distance = L.point( mouseEvent.clientX, mouseEvent.clientY ).distanceTo( this._finishShapeOrigin );
+				if ( Math.abs( distance ) < 9 * (window.devicePixelRatio || 1) ) {
+					this._finishShape();
+				}
+			}
+			this._finishShapeOrigin = null;
+		},
+		_onMouseDown: function ( e ) {
+			var originalEvent = e.originalEvent;
+			if ( L.Browser.touch ) {
+				if ( originalEvent.touches.length === 1 ) {
+					this._mouseDownOrigin = L.point( originalEvent.touches[0].clientX, originalEvent.touches[0].clientY );
+				}
+			} else {
+				this._mouseDownOrigin = L.point( originalEvent.clientX, originalEvent.clientY );
+			}
+		},
+
+		_onMouseUp: function ( e ) {
+			if ( this._mouseDownOrigin ) {
+				// We detect clicks within a certain tolerance, otherwise let it
+				// be interpreted as a drag by the map
+				var distance = null;
+				var mouseEvent = L.Browser.touch ? e.type === 'touchend' ?
+					e.originalEvent.changedTouches[0] : e.originalEvent.touches[0] : e.originalEvent;
+				distance = L.point( mouseEvent.clientX, mouseEvent.clientY ).distanceTo( this._mouseDownOrigin );
+//				this._mouseDownOrigin
+				if ( Math.abs( distance ) < 9 * (window.devicePixelRatio || 1) ) {
+					this.addVertex( e.latlng );
+				}
+			}
+			this._mouseDownOrigin = null;
+		},
+		_onTouchStart: function ( e ) {
+			this._onMouseDown( e );
+		},
+		_onTouchEnd: function ( e ) {
+			this._onMouseMove( e );
+			this._onMouseUp( e );
+		},
+
+		_onTouch: function ( e ) {
+
+			// #TODO: fix the glitchyness of not closing the polyline
+			// #TODO: use touchstart and touchend vs using click(touch start & end).
+			this._onMouseDown( e );
+			this._onMouseUp( e );
+		},
+
+		_vertexChanged: function ( latlng,
+															 added
+			) {
+			this._updateFinishHandler();
+//			if ( !L.Browser.touch ) {
+			this._updateRunningMeasure( latlng, added );
+
+			this._clearGuides();
+
+			this._updateTooltip();
+//			}
+		},
+
+		_updateFinishHandler: function () {
+			var markerCount = this._markers.length;
+			// The last marker should have a click handler to close the polyline
+			if ( markerCount > 1 ) {
+				if ( L.Browser.touch ) {
+					var marker = this._markers[markerCount - 1];
+					L.DomEvent.on(marker._icon,'touchstart', this._finishShapeTouchStart, this );
+					L.DomEvent.on(marker._icon,'touchend', this._finishShapeTouchEnd, this );
+//					this._markers[markerCount - 1].on( 'touchstart', this._finishShapeTouchStart, this );
+//					this._markers[markerCount - 1].on( 'touchend', this._finishShapeTouchEnd, this );
+				} else {
+					this._markers[markerCount - 1].on( 'click', this._finishShape, this );
+				}
+			}
+
+			// Remove the old marker click handler (as only the last point should close the polyline)
+			if ( markerCount > 2 ) {
+				if ( L.Browser.touch ) {
+					var marker = this._markers[markerCount - 2];
+					L.DomEvent.off(marker._icon,'touchstart', this._finishShapeTouchStart,this );
+					L.DomEvent.off(marker._icon,'touchend', this._finishShapeTouchEnd,this );
+//					this._markers[markerCount - 2].off( 'touchstart', this._finishShapeTouchStart );
+//					this._markers[markerCount - 2].off( 'touchend', this._finishShapeTouchEnd );
+				} else {
+					this._markers[markerCount - 2].off( 'click', this._finishShape, this );
+				}
+			}
+		},
+
+		_createMarker: function ( latlng ) {
+			var marker = new L.Marker( latlng, {
+				icon: this.options.icon,
+				zIndexOffset: this.options.zIndexOffset * 2
+			} );
+
+			this._markerGroup.addLayer( marker );
+
+			return marker;
+		},
+
+		_updateGuide: function ( newPos ) {
+			var markerCount = this._markers.length;
+
+			if ( markerCount > 0 ) {
+				newPos = newPos || this._map.latLngToLayerPoint( this._currentLatLng );
+
+				// draw the guide line
+				this._clearGuides();
+				this._drawGuide(
+					this._map.latLngToLayerPoint( this._markers[markerCount - 1].getLatLng() ),
+					newPos
+				);
+			}
+		},
+
+		_updateTooltip: function ( latLng ) {
+			var text = this._getTooltipText();
+
+			if ( latLng ) {
+				this._tooltip.updatePosition( latLng );
+			}
+
+			if ( !this._errorShown ) {
+				this._tooltip.updateContent( text );
+			}
+		},
+
+		_drawGuide: function ( pointA,
+													 pointB
+			) {
+			var length = Math.floor( Math.sqrt( Math.pow( (pointB.x - pointA.x), 2 ) + Math.pow( (pointB.y - pointA.y), 2 ) ) ),
+				guidelineDistance = this.options.guidelineDistance,
+				maxGuideLineLength = this.options.maxGuideLineLength,
 			// Only draw a guideline with a max length
-			i = length > maxGuideLineLength ? length - maxGuideLineLength : guidelineDistance,
-			fraction,
-			dashPoint,
-			dash;
+				i = length > maxGuideLineLength ? length - maxGuideLineLength : guidelineDistance,
+				fraction,
+				dashPoint,
+				dash;
 
-		//create the guides container if we haven't yet
-		if (!this._guidesContainer) {
-			this._guidesContainer = L.DomUtil.create('div', 'leaflet-draw-guides', this._overlayPane);
-		}
-
-		//draw a dash every GuildeLineDistance
-		for (; i < length; i += this.options.guidelineDistance) {
-			//work out fraction along line we are
-			fraction = i / length;
-
-			//calculate new x,y point
-			dashPoint = {
-				x: Math.floor((pointA.x * (1 - fraction)) + (fraction * pointB.x)),
-				y: Math.floor((pointA.y * (1 - fraction)) + (fraction * pointB.y))
-			};
-
-			//add guide dash to guide container
-			dash = L.DomUtil.create('div', 'leaflet-draw-guide-dash', this._guidesContainer);
-			dash.style.backgroundColor =
-				!this._errorShown ? this.options.shapeOptions.color : this.options.drawError.color;
-
-			L.DomUtil.setPosition(dash, dashPoint);
-		}
-	},
-
-	_updateGuideColor: function (color) {
-		if (this._guidesContainer) {
-			for (var i = 0, l = this._guidesContainer.childNodes.length; i < l; i++) {
-				this._guidesContainer.childNodes[i].style.backgroundColor = color;
+			//create the guides container if we haven't yet
+			if ( !this._guidesContainer ) {
+				this._guidesContainer = L.DomUtil.create( 'div', 'leaflet-draw-guides', this._overlayPane );
 			}
-		}
-	},
 
-	// removes all child elements (guide dashes) from the guides container
-	_clearGuides: function () {
-		if (this._guidesContainer) {
-			while (this._guidesContainer.firstChild) {
-				this._guidesContainer.removeChild(this._guidesContainer.firstChild);
+			//draw a dash every GuildeLineDistance
+			for ( ; i < length; i += this.options.guidelineDistance ) {
+				//work out fraction along line we are
+				fraction = i / length;
+
+				//calculate new x,y point
+				dashPoint = {
+					x: Math.floor( (pointA.x * (1 - fraction)) + (fraction * pointB.x) ),
+					y: Math.floor( (pointA.y * (1 - fraction)) + (fraction * pointB.y) )
+				};
+
+				//add guide dash to guide container
+				dash = L.DomUtil.create( 'div', 'leaflet-draw-guide-dash', this._guidesContainer );
+				dash.style.backgroundColor =
+					!this._errorShown ? this.options.shapeOptions.color : this.options.drawError.color;
+
+				L.DomUtil.setPosition( dash, dashPoint );
 			}
-		}
-	},
+		},
 
-	_getTooltipText: function () {
-		var showLength = this.options.showLength,
-			labelText, distanceStr;
+		_updateGuideColor: function ( color ) {
+			if ( this._guidesContainer ) {
+				for ( var i = 0, l = this._guidesContainer.childNodes.length; i < l; i++ ) {
+					this._guidesContainer.childNodes[i].style.backgroundColor = color;
+				}
+			}
+		},
 
-		if (this._markers.length === 0) {
-			labelText = {
-				text: L.drawLocal.draw.handlers.polyline.tooltip.start
-			};
-		} else {
-			distanceStr = showLength ? this._getMeasurementString() : '';
+		// removes all child elements (guide dashes) from the guides container
+		_clearGuides: function () {
+			if ( this._guidesContainer ) {
+				while ( this._guidesContainer.firstChild ) {
+					this._guidesContainer.removeChild( this._guidesContainer.firstChild );
+				}
+			}
+		},
 
-			if (this._markers.length === 1) {
+		_getTooltipText: function () {
+			var showLength = this.options.showLength,
+				labelText, distanceStr;
+
+			if ( this._markers.length === 0 ) {
 				labelText = {
-					text: L.drawLocal.draw.handlers.polyline.tooltip.cont,
-					subtext: distanceStr
+					text: L.drawLocal.draw.handlers.polyline.tooltip.start
 				};
 			} else {
-				labelText = {
-					text: L.drawLocal.draw.handlers.polyline.tooltip.end,
-					subtext: distanceStr
-				};
+				distanceStr = showLength ? this._getMeasurementString() : '';
+
+				if ( this._markers.length === 1 ) {
+					labelText = {
+						text: L.drawLocal.draw.handlers.polyline.tooltip.cont,
+						subtext: distanceStr
+					};
+				} else {
+					labelText = {
+						text: L.drawLocal.draw.handlers.polyline.tooltip.end,
+						subtext: distanceStr
+					};
+				}
 			}
+			return labelText;
+		},
+
+		_updateRunningMeasure: function ( latlng,
+																			added
+			) {
+			var markersLength = this._markers.length,
+				previousMarkerIndex, distance;
+
+			if ( this._markers.length === 1 ) {
+				this._measurementRunningTotal = 0;
+			} else {
+				previousMarkerIndex = markersLength - (added ? 2 : 1);
+				distance = latlng.distanceTo( this._markers[previousMarkerIndex].getLatLng() );
+
+				this._measurementRunningTotal += distance * (added ? 1 : -1);
+			}
+		},
+
+		_getMeasurementString: function () {
+			var currentLatLng = this._currentLatLng,
+				previousLatLng = this._markers[this._markers.length - 1].getLatLng(),
+				distance;
+
+			// calculate the distance from the last fixed point to the mouse position
+			distance = this._measurementRunningTotal + currentLatLng.distanceTo( previousLatLng );
+
+			return L.GeometryUtil.readableDistance( distance, this.options.metric );
+		},
+
+		_showErrorTooltip: function () {
+			this._errorShown = true;
+
+			// Update tooltip
+			this._tooltip
+				.showAsError()
+				.updateContent( { text: this.options.drawError.message } );
+
+			// Update shape
+			this._updateGuideColor( this.options.drawError.color );
+			this._poly.setStyle( { color: this.options.drawError.color } );
+
+			// Hide the error after 2 seconds
+			this._clearHideErrorTimeout();
+			this._hideErrorTimeout = setTimeout( L.Util.bind( this._hideErrorTooltip, this ), this.options.drawError.timeout );
+		},
+
+		_hideErrorTooltip: function () {
+			this._errorShown = false;
+
+			this._clearHideErrorTimeout();
+
+			// Revert tooltip
+			this._tooltip
+				.removeError()
+				.updateContent( this._getTooltipText() );
+
+			// Revert shape
+			this._updateGuideColor( this.options.shapeOptions.color );
+			this._poly.setStyle( { color: this.options.shapeOptions.color } );
+		},
+
+		_clearHideErrorTimeout: function () {
+			if ( this._hideErrorTimeout ) {
+				clearTimeout( this._hideErrorTimeout );
+				this._hideErrorTimeout = null;
+			}
+		},
+
+		_cleanUpShape: function () {
+			if ( this._markers.length > 1 ) {
+				this._markers[this._markers.length - 1].off( 'click', this._finishShape, this );
+			}
+		},
+
+		_fireCreatedEvent: function () {
+			var poly = new this.Poly( this._poly.getLatLngs(), this.options.shapeOptions );
+			L.Draw.Feature.prototype._fireCreatedEvent.call( this, poly );
 		}
-		return labelText;
-	},
-
-	_updateRunningMeasure: function (latlng, added) {
-		var markersLength = this._markers.length,
-			previousMarkerIndex, distance;
-
-		if (this._markers.length === 1) {
-			this._measurementRunningTotal = 0;
-		} else {
-			previousMarkerIndex = markersLength - (added ? 2 : 1);
-			distance = latlng.distanceTo(this._markers[previousMarkerIndex].getLatLng());
-
-			this._measurementRunningTotal += distance * (added ? 1 : -1);
-		}
-	},
-
-	_getMeasurementString: function () {
-		var currentLatLng = this._currentLatLng,
-			previousLatLng = this._markers[this._markers.length - 1].getLatLng(),
-			distance;
-
-		// calculate the distance from the last fixed point to the mouse position
-		distance = this._measurementRunningTotal + currentLatLng.distanceTo(previousLatLng);
-
-		return L.GeometryUtil.readableDistance(distance, this.options.metric);
-	},
-
-	_showErrorTooltip: function () {
-		this._errorShown = true;
-
-		// Update tooltip
-		this._tooltip
-			.showAsError()
-			.updateContent({ text: this.options.drawError.message });
-
-		// Update shape
-		this._updateGuideColor(this.options.drawError.color);
-		this._poly.setStyle({ color: this.options.drawError.color });
-
-		// Hide the error after 2 seconds
-		this._clearHideErrorTimeout();
-		this._hideErrorTimeout = setTimeout(L.Util.bind(this._hideErrorTooltip, this), this.options.drawError.timeout);
-	},
-
-	_hideErrorTooltip: function () {
-		this._errorShown = false;
-
-		this._clearHideErrorTimeout();
-
-		// Revert tooltip
-		this._tooltip
-			.removeError()
-			.updateContent(this._getTooltipText());
-
-		// Revert shape
-		this._updateGuideColor(this.options.shapeOptions.color);
-		this._poly.setStyle({ color: this.options.shapeOptions.color });
-	},
-
-	_clearHideErrorTimeout: function () {
-		if (this._hideErrorTimeout) {
-			clearTimeout(this._hideErrorTimeout);
-			this._hideErrorTimeout = null;
-		}
-	},
-
-	_cleanUpShape: function () {
-		if (this._markers.length > 1) {
-			this._markers[this._markers.length - 1].off('click', this._finishShape, this);
-		}
-	},
-
-	_fireCreatedEvent: function () {
-		var poly = new this.Poly(this._poly.getLatLngs(), this.options.shapeOptions);
-		L.Draw.Feature.prototype._fireCreatedEvent.call(this, poly);
-	}
-});
+	} );
 
 
 L.Draw.Polygon = L.Draw.Polyline.extend({
@@ -1091,20 +1177,18 @@ L.Edit.Poly = L.Handler.extend({
         touchIcon: new L.DivIcon({
             iconSize: new L.Point(20, 20),
             className: 'leaflet-div-icon leaflet-editing-icon leaflet-touch-icon'
-        }),
+        })
     },
-
-    initialize: function (poly, options) {
-        // if touch, switch to touch icon
-        if (L.Browser.touch){ 
-            this.options.icon = this.options.touchIcon;
-        }
-
-        this._map = map;
-        this._poly = poly;
-        L.setOptions(this, options);
-        console.log(L.Browser.touch)
-    },
+//    initialize: function (poly, options) {
+//        // if touch, switch to touch icon
+////        if (L.Browser.touch){
+////            this.options.icon = this.options.touchIcon;
+////        }
+//
+//        this._map = map;
+//        this._poly = poly;
+//        L.setOptions(this, options);
+//    },
 
     addHooks: function () {
         if (this._poly._map) {
@@ -1410,17 +1494,17 @@ L.Edit.SimpleShape = L.Handler.extend({
         }),
 	},
 
-	initialize: function (shape, options) {
-        // if touch, switch to touch icon
-        if (L.Browser.touch){ 
-            this.options.moveIcon = this.options.touchMoveIcon;
-            this.options.resizeIcon = this.options.touchResizeIcon;
-        }
-
-        this._map = map;
-		this._shape = shape;
-		L.Util.setOptions(this, options);
-	},
+//	initialize: function (shape, options) {
+//        // if touch, switch to touch icon
+//        if (L.Browser.touch){
+//            this.options.moveIcon = this.options.touchMoveIcon;
+//            this.options.resizeIcon = this.options.touchResizeIcon;
+//        }
+//
+//        this._map = map;
+//		this._shape = shape;
+//		L.Util.setOptions(this, options);
+//	},
 
 	addHooks: function () {
 		if (this._shape._map) {
@@ -1776,122 +1860,176 @@ L.Circle.addInitHook(function () {
 	});
 });
 
-L.Map.mergeOptions({
-  touchExtend: true
-});
+L.Map.TouchExtend = L.Handler.extend(
+	{
 
-L.Map.TouchExtend = L.Handler.extend({
+		initialize: function ( map ) {
+			this._map = map;
+			this._container = map._container;
+			this._pane = map._panes.overlayPane;
+		},
 
-    initialize: function (map) {
-        this._map = map;
-        this._container = map._container;
-        this._pane = map._panes.overlayPane;
-    },
+		addHooks: function () {
+			L.DomEvent.on( this._container, 'touchstart', this._onTouchStart, this );
+			L.DomEvent.on( this._container, 'touchend', this._onTouchEnd, this );
+			L.DomEvent.on( this._container, 'touchcancel', this._onTouchCancel, this );
+			L.DomEvent.on( this._container, 'touchleave', this._onTouchLeave, this );
+			L.DomEvent.on( this._container, 'touchmove', this._onTouchMove, this );
+		},
 
-    addHooks: function () {
-        L.DomEvent.on(this._container, 'touchstart', this._onTouchStart, this);
-        L.DomEvent.on(this._container, 'touchend', this._onTouchEnd, this);
-        L.DomEvent.on(this._container, 'touchcancel', this._onTouchCancel, this);
-        L.DomEvent.on(this._container, 'touchleave', this._onTouchLeave, this);
-        L.DomEvent.on(this._container, 'touchmove', this._onTouchMove, this);
-    },
+		removeHooks: function () {
+			L.DomEvent.off( this._container, 'touchstart', this._onTouchStart );
+			L.DomEvent.off( this._container, 'touchend', this._onTouchEnd );
+			L.DomEvent.off( this._container, 'touchcancel', this._onTouchCancel );
+			L.DomEvent.off( this._container, 'touchleave', this._onTouchLeave );
+			L.DomEvent.off( this._container, 'touchmove', this._onTouchMove );
+		},
 
-    removeHooks: function () {
-        L.DomEvent.off(this._container, 'touchstart', this._onTouchStart);
-        L.DomEvent.off(this._container, 'touchend', this._onTouchEnd);
-        L.DomEvent.off(this._container, 'touchcancel', this._onTouchCancel);
-        L.DomEvent.off(this._container, 'touchleave', this._onTouchLeave);
-        L.DomEvent.off(this._container, 'touchmove', this._onTouchMove);
-    },
-    
-    _touchEvent: function (e, type) {
-        // #TODO: fix the pageX error that is do a bug in Android where a single touch triggers two click events
-        // _filterClick is what leaflet uses as a workaround.
-        var containerPoint = this._map.mouseEventToContainerPoint(e.touches[0]);
-            layerPoint = this._map.mouseEventToLayerPoint(e.touches[0]),
-            latlng = this._map.layerPointToLatLng(layerPoint);
+		_touchEvent: function ( e,
+														type
+			) {
+			// #TODO: fix the pageX error that is do a bug in Android where a single touch triggers two click events
+			// _filterClick is what leaflet uses as a workaround.
+			var mouseEvent = type === 'touchend' ? e.changedTouches[0] : e.touches[0],
+				containerPoint = this._map.mouseEventToContainerPoint( mouseEvent ),
+				layerPoint = this._map.mouseEventToLayerPoint( mouseEvent ),
+				latlng = this._map.layerPointToLatLng( layerPoint );
 
-        this._map.fire(type, {
-            latlng: latlng,
-            layerPoint: layerPoint,
-            containerPoint: containerPoint,
-            pageX: e.touches[0].pageX,
-            pageY: e.touches[0].pageY,
-            originalEvent: e
-        });
-    },
+			this._map.fire( type, {
+				latlng: latlng,
+				layerPoint: layerPoint,
+				containerPoint: containerPoint,
+				pageX: mouseEvent.pageX,
+				pageY: mouseEvent.pageY,
+				originalEvent: e
+			} );
+		},
 
-    _onTouchStart: function (e) {
-        if (!this._map._loaded) { return; }
+		_onTouchStart: function ( e ) {
+			if ( !this._map._loaded ) {
+				return;
+			}
 
-        var type = 'touchstart';
-        this._touchEvent(e, type);
-        
-    },
+			var type = 'touchstart';
+			this._touchEvent( e, type );
 
-    _onTouchEnd: function (e) {
-        if (!this._map._loaded) { return; }
+		},
 
-        var type = 'touchend';
-        this._touchEvent(e, type);
-    },
-    
-    _onTouchCancel: function (e) {
-        if (!this._map._loaded) { return; }
+		_onTouchEnd: function ( e ) {
+			if ( !this._map._loaded ) {
+				return;
+			}
 
-        var type = 'touchcancel';
-        this._touchEvent(e, type);
-    },
+			var type = 'touchend';
+			this._touchEvent( e, type );
+		},
 
-    _onTouchLeave: function (e) {
-        if (!this._map._loaded) { return; }
+		_onTouchCancel: function ( e ) {
+			if ( !this._map._loaded ) {
+				return;
+			}
 
-        var type = 'touchleave';
-        this._touchEvent(e, type);
-    },
+			var type = 'touchcancel';
+			this._touchEvent( e, type );
+		},
 
-    _onTouchMove: function (e) {
-        if (!this._map._loaded) { return; }
+		_onTouchLeave: function ( e ) {
+			if ( !this._map._loaded ) {
+				return;
+			}
 
-        var type = 'touchmove';
-        this._touchEvent(e, type);
-    }
-});
+			var type = 'touchleave';
+			this._touchEvent( e, type );
+		},
 
-L.Map.addInitHook('addHandler', 'touchExtend', L.Map.TouchExtend);
+		_onTouchMove: function ( e ) {
+			if ( !this._map._loaded ) {
+				return;
+			}
+
+			var type = 'touchmove';
+			this._touchEvent( e, type );
+		}
+	} );
+
+L.Map.addInitHook( 'addHandler', 'touchExtend', L.Map.TouchExtend );
 
 // This isn't full Touch support. This is just to get makers to also support dom touch events after creation
 // #TODO: find a better way of getting markers to support touch.
-L.Marker.Touch = L.Marker.extend({
+L.Marker.Touch = L.Marker.extend(
+	{
 
-    // This is an exact copy of https://github.com/Leaflet/Leaflet/blob/v0.7/src/layer/marker/Marker.js
-    // with the addition of the touch event son line 15.
-    _initInteraction: function () {
+		// This is an exact copy of https://github.com/Leaflet/Leaflet/blob/v0.7/src/layer/marker/Marker.js
+		// with the addition of the touch event son line 15.
+		_initInteraction: function () {
 
-        if (!this.options.clickable) { return; }
+			if ( !this.options.clickable ) {
+				return;
+			}
 
-        // TODO refactor into something shared with Map/Path/etc. to DRY it up
+			// TODO refactor into something shared with Map/Path/etc. to DRY it up
 
-        var icon = this._icon,
-            events = ['dblclick', 'mousedown', 'mouseover', 'mouseout', 'contextmenu', 'touchstart', 'touchend', 'touchmove', 'touchcancel'];
+			var icon = this._icon,
+				events = ['dblclick', 'mousedown', 'mouseover', 'mouseout', 'contextmenu',
+									'touchstart', 'touchend', 'touchmove', 'touchcancel'
+				];
 
-        L.DomUtil.addClass(icon, 'leaflet-clickable');
-        L.DomEvent.on(icon, 'click', this._onMouseClick, this);
-        L.DomEvent.on(icon, 'keypress', this._onKeyPress, this);
+			L.DomUtil.addClass( icon, 'leaflet-clickable' );
+			L.DomEvent.on( icon, 'click', this._onMouseClick, this );
+			L.DomEvent.on( icon, 'keypress', this._onKeyPress, this );
 
-        for (var i = 0; i < events.length; i++) {
-            L.DomEvent.on(icon, events[i], this._fireMouseEvent, this);
-        }
+			for ( var i = 0; i < events.length; i++ ) {
+				L.DomEvent.on( icon, events[i], this._fireMouseEvent, this );
+			}
 
-        if (L.Handler.MarkerDrag) {
-            this.dragging = new L.Handler.MarkerDrag(this);
+			if ( L.Handler.MarkerDrag ) {
+				this.dragging = new L.Handler.MarkerDrag( this );
 
-            if (this.options.draggable) {
-                this.dragging.enable();
-            }
-        }
-    }
-});
+				if ( this.options.draggable ) {
+					this.dragging.enable();
+				}
+			}
+		}
+//		_initInteraction: function () {
+//
+//			if (!this.options.clickable) { return; }
+//
+//			L.DomUtil.addClass(this._icon, 'leaflet-clickable');
+//
+//			L.DomEvent.on(this._icon, 'click dblclick mousedown mouseup mouseover mouseout contextmenu keypress',
+//										this._fireMouseEvent, this);
+//
+//			if( L.Browser.touch){
+//				L.DomEvent.on(this._icon,'touchstart',this._fireTouchEvent,this);
+//				L.DomEvent.on(this._icon,'touchend',this._fireTouchEvent,this);
+//				L.DomEvent.on(this._icon,'touchmove',this._fireTouchEvent,this);
+//				L.DomEvent.on(this._icon,'touchcancel',this._fireTouchEvent,this);
+//			}
+//
+//			if (L.Handler.MarkerDrag) {
+//				this.dragging = new L.Handler.MarkerDrag(this);
+//
+//				if (this.options.draggable) {
+//					this.dragging.enable();
+//				}
+//			}
+//		},
+//
+//		_fireTouchEvent: function (e, type) {
+//			// to prevent outline when clicking on keyboard-focusable marker
+//			type= e.type;
+//			if (e.type === 'touchstart') {
+//				L.DomEvent.preventDefault(e);
+//			}
+//
+//			if (e.type === 'touchstart' && this.dragging && this.dragging.moved()) { return; }
+//
+////			if (this._map && this._map.touchExtend && this._map.touchExtend.enabled) {
+////				this._map._fireMouseEvent(this, e, type, true, this._latlng);
+//////				this._map._fireMouseEvent(e, type);
+////			}
+//		}
+	} );
 
 /*
  * L.LatLngUtil contains different utility functions for LatLngs.
