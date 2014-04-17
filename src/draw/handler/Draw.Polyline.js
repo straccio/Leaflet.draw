@@ -354,7 +354,13 @@ L.Draw.Polyline = L.Draw.Feature.extend(
 		},
 
 		_createMarker: function ( latlng ) {
-			var marker = new L.Marker( latlng, {
+			var markerClass=null
+			if( L.Browser.touch){
+				markerClass= L.Marker;
+			}else{
+				markerClass= L.Marker.Touch
+			}
+			var marker = new markerClass ( latlng, {
 				icon: this.options.icon,
 				zIndexOffset: this.options.zIndexOffset * 2
 			} );
